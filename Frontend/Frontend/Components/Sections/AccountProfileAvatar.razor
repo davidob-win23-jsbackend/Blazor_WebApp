@@ -119,7 +119,7 @@ else
 
             try
             {
-                var response = await Http.PostAsync("https://fileprovider-win23jsbackend-davidob.azurewebsites.net/api/upload", content);
+                var response = await Http.PostAsync(Environment.GetEnvironmentVariable("FILEPROVIDER_UPLOAD_PROFILE_URI"), content);
 
                 if (response.IsSuccessStatusCode)
                 {
