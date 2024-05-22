@@ -1,0 +1,139 @@
+﻿@attribute [StreamRendering]
+
+@using Microsoft.AspNetCore.Components
+
+
+@using System.Net.Http.Headers
+@using System.Security.Claims
+@using System.Diagnostics
+@using Microsoft.EntityFrameworkCore
+
+@inject IServiceProvider ServiceProvider
+@inject IConfiguration _configuration
+
+@if(user == null)
+{
+    <p>Loading....</p>
+}
+else
+{
+    <section class="account-profile">
+        <div class="profile">
+            <div class="profile-image">
+                <img src="/images/uploads/profiles/@user.ProfileImage" alt="@user.FirstName @user.LastName" />
+
+                <EditForm Model="@uploadModel" OnInvalidSubmit="HandleProfileUpload">
+                    <InputFile id="fileUploader" OnChange="HandleFIleSelected" hidden/>
+                    <label for="fileUploader" class="btn btn-circle btn-circle-sm"><i class="fa-regular fa-refresh"></i></label>
+                </EditForm>
+            </div>
+            <div class="profile-info">
+                <h3 class="displayname">@user.FirstName @user.LastName</h3>
+                <p>@user.Email</p>
+            </div>
+
+            <nav>
+                <NavLink class="btn-theme-s" href="/account/details" Match="NavLinkMatch.All"><i class="fa-regular fa-fog"></i>Account Details</NavLink>
+                <NavLink class="btn-gray" href="/account/security"><i class="fa-regular fa-lock"></i>Security</NavLink>
+                <NavLink class="btn-gray" href="/account/savecourses"><i class="fa-regular fa-bookmark"></i>Saved Courses</NavLink>
+                <NavLink class="btn-gray" href="/signout"><i class="fa-regular fa-arrow-right-from-bracket"></i>Sign out</NavLink>
+            </nav>
+        </div>
+    </section>
+}
+
+
+
+
+@code {
+    private ApplicationUser user = default!;
+
+    private MultipartFormDataContent uploadModel = new MultipartFormDataContent();
+
+    private IBrowserFile? selectedFile;
+
+    [CascadingParameter]
+
+    private Task<AuthenticationState> AuthenticationState { get; set; } = default!;
+
+    [CascadingParameter]
+    private HttpContext HttpContext { get; set; } = default!;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var userClaims = (await AuthenticationState).User;
+
+        if (userClaims.Identity!.IsAuthenticated)
+        {
+
+            await using var scope = ServiceProvider.CreateAsyncScope();
+            var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+
+            var usermanager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
+
+            var userId = usermanager.GetUserId(userClaims);
+            if(userId != null)
+            {
+                user = await dbContext.Users.AsNoTracking().FirstOrDefaultAsync(x => x.Id == userId);
+            }
+        }
+    }
+
+    private void HandleFIleSelected(InputFileChangeEventArgs e)
+    {
+        selectedFile = e.File;
+    }
+
+    private async Task LoadUserDataAsync()
+    {
+       
+        try
+        {
+            var userPrincipal = await UserManager.GetUserAsync(HttpContext.User);
+            if (userPrincipal == null)
+            {
+                
+                throw new InvalidOperationException("User not found.");
+            }
+
+            user = userPrincipal;
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"Error in LoadUserDataAsync: {ex.Message}");
+            throw;
+        }
+    }
+
+
+
+
+    public async Task HandleProfileUpload()
+    {
+        if(selectedFile != null)
+        {
+            using var content = new MultipartFormDataContent();
+            var fileContent = new StreamContent(selectedFile.OpenReadStream(maxAllowedSize: 1024 * 1024 * 15));
+            fileContent.Headers.ContentType = new MediaTypeHeaderValue(selectedFile.ContentType);
+            content.Add(fileContent, "file", selectedFile.Name);
+
+            try
+            {
+                var response = await Http.PostAsync("https://fileprovider-win23jsbackend-davidob.azurewebsites.net/api/upload", content);
+
+                if (response.IsSuccessStatusCode)
+                {
+                    await LoadUserDataAsync();
+                    StateHasChanged();
+                }
+            }
+            catch (Exception ex)
+            {
+                
+            }
+        }
+
+    }
+
+
+}
