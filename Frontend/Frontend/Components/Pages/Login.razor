@@ -4,6 +4,7 @@
 @using Microsoft.AspNetCore.Authentication
 @using Microsoft.AspNetCore.Identity
 @using Frontend.Data
+@using Frontend.Components.Pages
 
 @inject SignInManager<ApplicationUser> SignInManager
 @inject ILogger<Login> Logger
@@ -51,6 +52,8 @@
                 </div>
             </div>
         </EditForm>
+
+        <ExternalLoginPicker />
 
     </div>
 </section>
