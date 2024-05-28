@@ -28,6 +28,18 @@ builder.Services.AddAuthentication(options =>
     })
     .AddIdentityCookies();
 
+builder.Services.AddAuthentication()
+    .AddFacebook(options =>
+    {
+        options.AppId = builder.Configuration["FacebookAppId"]!;
+        options.AppSecret = builder.Configuration["FacebookAppSecret"]!;
+    })
+    .AddGoogle(options =>
+    {
+        options.ClientId = builder.Configuration["GoogleClientId"]!;
+        options.ClientSecret = builder.Configuration["GoogleClientSecret"]!;
+    });
+
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection") ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
 
 
