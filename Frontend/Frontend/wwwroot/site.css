@@ -1385,6 +1385,21 @@ header .container .account-buttons .profile .profile-image form lebel {
   margin-top: auto;
 }
 
+main .container-fluid .row .col .chat {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 80%;
+  max-width: 800px;
+  margin: -100px auto 0;
+}
+main .container-fluid .row .col .chat .card {
+  margin-top: 20px;
+}
+main .container-fluid .row .col .chat .card .card-footer .chat-textarea {
+  height: 250px;
+  width: 700px;
+}
 #blazor-error-ui {
   background: lightyellow;
   bottom: 0;
@@ -1402,4 +1417,24 @@ header .container .account-buttons .profile .profile-image form lebel {
   position: absolute;
   right: 0.75rem;
   top: 0.5rem;
+}
+
+.chat-bubble-right {
+  text-align: right;
+  background-color: #ffffff;
+  color: black;
+  margin-left: auto;
+  border-radius: 15px;
+  padding: 10px;
+  max-width: 75%;
+}
+
+.chat-bubble-left {
+  text-align: left;
+  background-color: #ffffff;
+  color: black;
+  margin-left: auto;
+  border-radius: 15px;
+  padding: 10px;
+  max-width: 75%;
 }

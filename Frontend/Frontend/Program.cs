@@ -1,3 +1,4 @@
+using BackOffice.Hubs;
 using Frontend;
 using Frontend.Client.Pages;
 using Frontend.Components;
@@ -57,6 +58,8 @@ builder.Services.AddIdentityCore<ApplicationUser>(options => options.SignIn.Requ
     .AddSignInManager()
     .AddDefaultTokenProviders();
 
+builder.Services.AddSignalR();
+
 builder.Services.ConfigureApplicationCookie(x =>
 {
     x.LoginPath = "/signin";
@@ -93,5 +96,7 @@ app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode()
     .AddInteractiveWebAssemblyRenderMode()
     .AddAdditionalAssemblies(typeof(Frontend.Client._Imports).Assembly);
+
+app.MapHub<ChatHub>("/chathub");
 
 app.Run();

@@ -27,6 +27,8 @@
 @import 'scss/sections/_signup.scss';
 @import 'scss/sections/_subscribe_to_newsletter.scss';
 @import 'scss/sections/_page_error.scss';
+@import 'scss/sections/_chat.scss';
+
 
 
 
@@ -47,4 +49,26 @@
     position: absolute;
     right: 0.75rem;
     top: 0.5rem;
+}
+
+
+.chat-bubble-right {
+    text-align: right;
+    background-color: #ffffff;
+    color:black;
+    margin-left: auto;
+    border-radius: 15px;
+    padding: 10px;
+    max-width: 75%;
+}
+
+
+.chat-bubble-left {
+    text-align: left;
+    background-color: #ffffff;
+    color:black;
+    margin-left: auto;
+    border-radius: 15px;
+    padding: 10px;
+    max-width: 75%;
 }

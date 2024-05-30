@@ -1,0 +1,51 @@
+main {
+    .container-fluid {
+        .row {
+            .sidebar {
+ 
+            }
+
+            .col {
+                .chat {
+                    display: flex;
+                    justify-content: center;
+                    align-items: center;
+                    width: 80%; 
+                    max-width: 800px; 
+                    margin: -100px auto 0;
+
+                    .card {
+                        margin-top: 20px;
+                       
+
+                        .card-header {
+                            
+                        }
+
+                        .card-body {
+                           
+                        }
+
+                        .list-group-item {
+                            
+                        }
+
+                        .card-footer {
+                            
+
+                            .chat-textarea {
+                                height: 250px;
+                                width:700px;
+                                
+                            }
+
+                            .chat-send-button {
+                               
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
