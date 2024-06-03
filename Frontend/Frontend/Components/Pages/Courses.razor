@@ -1,4 +1,6 @@
 ﻿@page "/courses"
+@using System.Text.Json.Serialization
+@using System.Text.Json
 
 @attribute [StreamRendering]
 
@@ -40,7 +42,7 @@
 
                         <a asp-action="Join" asp-controller="Courses" asp-route-id="@course.Id" class="btn btn-circle bookmark"><i class="fa-regular fa-bookmark"></i></a>
 
-                        <img src="~/images/courses/@course.Image" alt="@course.Title" />
+                        <img src="@course.Image" alt="@course.Title" />
 
                         <div class="content">
                             <h5 class="title">@course.Title</h5>
@@ -76,32 +78,86 @@
 
 
 
-@code 
+@code
 {
-
     private CourseModel[]? courses;
 
     protected override async Task OnInitializedAsync()
     {
-        try
+        var query = new GraphQlQuery { Query = "{getCourses {id isBestseller title authors {name} categories prices {price discount currency} hours likesInProcent likes imageUri}}" };
+        var response = await Http.PostAsJsonAsync("http://localhost:7042/api/graphql", query);
+
+        if (response.IsSuccessStatusCode)
         {
-            courses = await Http.GetFromJsonAsync<CourseModel[]>(Environment.GetEnvironmentVariable("COURSES_URI"));
+            var result = await response.Content.ReadFromJsonAsync<DynamicGraphQlResponse>();
+            courses = result?.Data.GetProperty("getCourses").EnumerateArray()
+                .Select(course => new CourseModel
+                    {
+                        Id = GetStringValue(course, "id"),
+                        IsBestseller = GetBooleanValue(course, "isBestseller"),
+                        Image = GetStringValue(course, "imageUri"),
+                        Title = GetStringValue(course, "title"),
+                        Author = GetArrayElementStringValue(course.GetProperty("authors"), 0, "name"),
+                        Price = $"{GetStringValue(course.GetProperty("prices"), "currency")} {GetDoubleValue(course.GetProperty("prices"), "price")}",
+                        DiscountPrice = GetDoubleValue(course.GetProperty("prices"), "discount") > 0
+                            ? $"{GetStringValue(course.GetProperty("prices"), "currency")} {GetDoubleValue(course.GetProperty("prices"), "price") - GetDoubleValue(course.GetProperty("prices"), "discount")}"
+                            : null,
+                        Hours = GetStringValue(course, "hours"),
+                        LikeInProcent = GetStringValue(course, "likesInProcent"),
+                        LikeInNumbers = GetStringValue(course, "likes"),
+                    })
+                .ToList()
+                .ToArray();
         }
-        catch(Exception ex) { }
+    }
+
+    private string GetStringValue(JsonElement element, string propertyName)
+    {
+        return element.TryGetProperty(propertyName, out JsonElement property) ? property.GetString() ?? string.Empty : string.Empty;
+    }
+
+    private bool GetBooleanValue(JsonElement element, string propertyName)
+    {
+        return element.TryGetProperty(propertyName, out JsonElement property) && property.GetBoolean();
+    }
+
+    private double GetDoubleValue(JsonElement element, string propertyName)
+    {
+        return element.TryGetProperty(propertyName, out JsonElement property) ? property.GetDouble() : 0.0;
+    }
+
+    private string GetArrayElementStringValue(JsonElement element, int index, string propertyName)
+    {
+        if (element.GetArrayLength() > index)
+        {
+            var arrayElement = element[index];
+            return GetStringValue(arrayElement, propertyName);
+        }
+        return string.Empty;
+    }
+
+    private class GraphQlQuery
+    {
+        public string Query { get; set; } = null!;
+    }
+
+    private class DynamicGraphQlResponse
+    {
+        [JsonPropertyName("data")]
+        public JsonElement Data { get; set; }
     }
 
     private class CourseModel
     {
-        public int Id { get; set; }
+        public string? Id { get; set; }
         public bool IsBestseller { get; set; }
-        public string Image { get; set; } = null!;
-        public string Title { get; set; } = null!;
-        public string Author { get; set; } = null!;
-        public string Price { get; set; } = null!;
+        public string? Image { get; set; }
+        public string? Title { get; set; }
+        public string? Author { get; set; }
+        public string? Price { get; set; }
         public string? DiscountPrice { get; set; }
-        public string Hours { get; set; } = null!;
-        public string LikeInProcent { get; set; } = null!;
-        public string LikeInNumbers { get; set; } = null!;
+        public string? Hours { get; set; }
+        public string? LikeInProcent { get; set; }
+        public string? LikeInNumbers { get; set; }
     }
-
 }
