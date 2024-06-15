@@ -1,30 +1,39 @@
-﻿@attribute [StreamRendering]
+﻿@page "/account/profile"
+@attribute [StreamRendering]
 
-@using Microsoft.AspNetCore.Components
-
-
-@using System.Net.Http.Headers
-@using System.Security.Claims
-@using System.Diagnostics
+@using Microsoft.AspNetCore.Components.Forms
+@using Microsoft.AspNetCore.Components.Authorization
 @using Microsoft.EntityFrameworkCore
+@using System.Net.Http.Headers
+@using System.Diagnostics
 
 @inject IServiceProvider ServiceProvider
 @inject IConfiguration _configuration
+@inject NavigationManager Navigation
+@inject HttpClient Http
 
-@if(user == null)
+@if (user == null)
 {
     <p>Loading....</p>
 }
 else
 {
+    @if (!string.IsNullOrEmpty(successMessage))
+    {
+        <div class="alert alert-success" role="alert">
+            @successMessage
+        </div>
+    }
     <section class="account-profile">
         <div class="profile">
             <div class="profile-image">
                 <img src="/images/uploads/profiles/@user.ProfileImage" alt="@user.FirstName @user.LastName" />
 
-                <EditForm Model="@uploadModel" OnInvalidSubmit="HandleProfileUpload">
-                    <InputFile id="fileUploader" OnChange="HandleFIleSelected" hidden/>
-                    <label for="fileUploader" class="btn btn-circle btn-circle-sm"><i class="fa-regular fa-refresh"></i></label>
+                <EditForm Model="uploadModel" OnSubmit="HandleProfileUpload" enctype="multipart/form-data">
+                    <InputFile id="fileUploader" OnChange="HandleFileSelected" hidden />
+                    <label for="fileUploader" class="btn btn-circle btn-circle-sm">
+                        <i class="fa-regular fa-refresh"></i>
+                    </label>
                 </EditForm>
             </div>
             <div class="profile-info">
@@ -33,85 +42,82 @@ else
             </div>
 
             <nav>
-                <NavLink class="btn-theme-s" href="/account/details" Match="NavLinkMatch.All"><i class="fa-regular fa-fog"></i>Account Details</NavLink>
-                <NavLink class="btn-gray" href="/account/security"><i class="fa-regular fa-lock"></i>Security</NavLink>
-                <NavLink class="btn-gray" href="/account/savecourses"><i class="fa-regular fa-bookmark"></i>Saved Courses</NavLink>
-                <NavLink class="btn-gray" href="/account/chat"><i class="fa-regular fa-bookmark"></i>Chat</NavLink>
-                <NavLink class="btn-gray" href="/signout"><i class="fa-regular fa-arrow-right-from-bracket"></i>Sign out</NavLink>
+                <NavLink class="btn-theme-s" href="/account/details" Match="NavLinkMatch.All">
+                    <i class="fa-regular fa-fog"></i>Account Details
+                </NavLink>
+                <NavLink class="btn-gray" href="/account/security">
+                    <i class="fa-regular fa-lock"></i>Security
+                </NavLink>
+                <NavLink class="btn-gray" href="/account/savecourses">
+                    <i class="fa-regular fa-bookmark"></i>Saved Courses
+                </NavLink>
+                <NavLink class="btn-gray" href="/account/chat">
+                    <i class="fa-regular fa-bookmark"></i>Chat
+                </NavLink>
+                <NavLink class="btn-gray" href="/signout">
+                    <i class="fa-regular fa-arrow-right-from-bracket"></i>Sign out
+                </NavLink>
             </nav>
         </div>
     </section>
 }
 
-
-
-
 @code {
+    private string successMessage = string.Empty;
     private ApplicationUser user = default!;
-
     private MultipartFormDataContent uploadModel = new MultipartFormDataContent();
-
     private IBrowserFile? selectedFile;
-
     [CascadingParameter]
-
     private Task<AuthenticationState> AuthenticationState { get; set; } = default!;
+    private string errorMessage = string.Empty;
 
-    [CascadingParameter]
-    private HttpContext HttpContext { get; set; } = default!;
+    private class FileEntity
+    {
+        public string FileName { get; set; }
+        public string ContentType { get; set; }
+        public string ContainerName { get; set; }
+    }
 
     protected override async Task OnInitializedAsync()
     {
-        var userClaims = (await AuthenticationState).User;
-
-        if (userClaims.Identity!.IsAuthenticated)
-        {
-
-            await using var scope = ServiceProvider.CreateAsyncScope();
-            var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-
-            var usermanager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
-
-            var userId = usermanager.GetUserId(userClaims);
-            if(userId != null)
-            {
-                user = await dbContext.Users.AsNoTracking().FirstOrDefaultAsync(x => x.Id == userId);
-            }
-        }
+        await LoadUserDataAsync();
     }
 
-    private void HandleFIleSelected(InputFileChangeEventArgs e)
+    private void HandleFileSelected(InputFileChangeEventArgs e)
     {
         selectedFile = e.File;
     }
 
     private async Task LoadUserDataAsync()
     {
-       
         try
         {
-            var userPrincipal = await UserManager.GetUserAsync(HttpContext.User);
-            if (userPrincipal == null)
-            {
-                
-                throw new InvalidOperationException("User not found.");
-            }
+            var authState = await AuthenticationState;
+            var userClaims = authState.User;
 
-            user = userPrincipal;
+            if (userClaims.Identity!.IsAuthenticated)
+            {
+                await using var scope = ServiceProvider.CreateAsyncScope();
+                var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+                var userManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
+
+                var userId = userManager.GetUserId(userClaims);
+                if (userId != null)
+                {
+                    user = await dbContext.Users.AsNoTracking().FirstOrDefaultAsync(x => x.Id == userId);
+                }
+            }
         }
         catch (Exception ex)
         {
             Debug.WriteLine($"Error in LoadUserDataAsync: {ex.Message}");
-            throw;
+            errorMessage = "Failed to load user data.";
         }
     }
 
-
-
-
-    public async Task HandleProfileUpload()
+    public async Task HandleProfileUpload(EditContext editContext)
     {
-        if(selectedFile != null)
+        if (selectedFile != null)
         {
             using var content = new MultipartFormDataContent();
             var fileContent = new StreamContent(selectedFile.OpenReadStream(maxAllowedSize: 1024 * 1024 * 15));
@@ -120,21 +126,29 @@ else
 
             try
             {
-                var response = await Http.PostAsync(Environment.GetEnvironmentVariable("FILEPROVIDER_UPLOAD_PROFILE_URI"), content);
+                var response = await Http.PostAsync("http://localhost:7204/api/Upload?containerName=profiles", content);
 
                 if (response.IsSuccessStatusCode)
                 {
-                    await LoadUserDataAsync();
-                    StateHasChanged();
+                    var fileEntity = await response.Content.ReadFromJsonAsync<FileEntity>();
+
+                    if (fileEntity != null)
+                    {
+                        user.ProfileImage = fileEntity.FileName;
+                        await LoadUserDataAsync(); // Reload user data to reflect changes
+                        StateHasChanged(); // Trigger UI update
+                    }
+                }
+                else
+                {
+                    errorMessage = "Failed to upload the image.";
                 }
             }
             catch (Exception ex)
             {
-                
+                Debug.WriteLine($"Error in HandleProfileUpload: {ex.Message}");
+                errorMessage = "An error occurred during the upload.";
             }
         }
-
     }
-
-
 }
